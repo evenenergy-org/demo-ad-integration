@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   demo-ad-integration:
     image: ${APP_NAME}:${IMAGE_TAG}
@@ -27,6 +25,5 @@ services:
 
 networks:
   ad-network:
-    name: ad-network
-    external: true
+    driver: bridge
 
