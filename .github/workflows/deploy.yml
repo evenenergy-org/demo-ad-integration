@@ -1,0 +1,320 @@
+name: 🚀 部署到测试服务器
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '手动部署原因'
+        required: false
+        default: '手动触发部署'
+
+env:
+  # 应用配置
+  APP_NAME: demo-ad-integration
+  APP_VERSION: 1.0.0
+  NODE_VERSION: '20'
+  
+  # 服务器配置
+  SERVER_HOST: ${{ secrets.TEST_SERVER_HOST }}
+  SERVER_PORT: ${{ secrets.TEST_SERVER_PORT }}
+  SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
+  SERVER_SSH_KEY: ${{ secrets.TEST_SERVER_SSH_KEY }}
+  DEPLOY_PATH: /opt/demo-ad-integration
+
+jobs:
+  build-and-deploy:
+    name: 📦 构建并部署
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ========================================
+      # 步骤 1: 检出代码
+      # ========================================
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      # ========================================
+      # 步骤 2: 设置 Node.js 环境
+      # ========================================
+      - name: 📦 设置 Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      # ========================================
+      # 步骤 3: 安装 pnpm
+      # ========================================
+      - name: 📦 安装 pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      
+      # ========================================
+      # 步骤 4: 缓存依赖
+      # ========================================
+      - name: 💾 缓存依赖
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      
+      # ========================================
+      # 步骤 5: 安装依赖
+      # ========================================
+      - name: 📥 安装依赖
+        run: |
+          echo "📥 安装依赖..."
+          pnpm install --frozen-lockfile
+          echo "✅ 依赖安装完成"
+      
+      # ========================================
+      # 步骤 6: 构建项目
+      # ========================================
+      - name: 🔨 构建项目
+        run: |
+          echo "=================================="
+          echo "🏗️  构建信息"
+          echo "=================================="
+          echo "📦 应用名称: ${{ env.APP_NAME }}"
+          echo "🔢 版本号: ${{ env.APP_VERSION }}"
+          echo "🌿 分支: ${{ github.ref_name }}"
+          echo "📝 提交: ${{ github.sha }}"
+          echo "👤 提交者: ${{ github.actor }}"
+          echo "⏰ 构建时间: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "=================================="
+          
+          echo "🔨 开始构建..."
+          pnpm run build
+          
+          echo "✅ 构建完成"
+          echo "📂 构建产物:"
+          ls -lh .output/
+      
+      # ========================================
+      # 步骤 7: 准备部署文件
+      # ========================================
+      - name: 📝 准备部署文件
+        run: |
+          echo "📝 准备部署文件..."
+          
+          # 创建部署目录
+          mkdir -p deploy
+          
+          # 复制构建产物
+          cp -r .output deploy/
+          
+          # 复制配置文件
+          cp nuxt.config.ts deploy/
+          cp package.json deploy/
+          
+          # 创建部署脚本
+          cat > deploy/deploy.sh << 'EOFSCRIPT'
+#!/bin/bash
+set -e
+
+echo "=================================="
+echo "🚀 开始部署"
+echo "=================================="
+
+cd /opt/demo-ad-integration
+
+# 停止旧进程
+echo "⏹️  停止旧进程..."
+pm2 stop demo-ad-integration || true
+pm2 delete demo-ad-integration || true
+
+# 备份旧版本
+if [ -d "current" ]; then
+  echo "📦 备份旧版本..."
+  mv current backup/backup-$(date +%Y%m%d-%H%M%S)
+  mkdir -p backup
+fi
+
+# 创建部署目录
+mkdir -p current
+mkdir -p logs
+mkdir -p backup
+
+# 复制新版本
+echo "📂 复制新版本..."
+cp -r .output/* current/
+
+# 创建 PM2 配置文件
+cat > ecosystem.config.js << 'EOFPM2'
+module.exports = {
+  apps: [{
+    name: 'demo-ad-integration',
+    script: 'current/server/index.mjs',
+    cwd: '/opt/demo-ad-integration',
+    instances: 2,
+    exec_mode: 'cluster',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000,
+      NITRO_PORT: 3000,
+      HOST: '0.0.0.0'
+    },
+    error_file: '/opt/demo-ad-integration/logs/err.log',
+    out_file: '/opt/demo-ad-integration/logs/out.log',
+    log_file: '/opt/demo-ad-integration/logs/combined.log',
+    time: true,
+    merge_logs: true,
+    autorestart: true,
+    max_restarts: 10,
+    min_uptime: '10s',
+    watch: false
+  }]
+}
+EOFPM2
+
+# 启动应用
+echo "🚀 启动应用..."
+pm2 start ecosystem.config.js
+
+# 保存 PM2 配置
+pm2 save
+
+# 显示状态
+echo ""
+echo "📊 应用状态："
+pm2 status
+
+echo ""
+echo "📝 最近日志："
+pm2 logs demo-ad-integration --lines 50 --nostream
+
+echo ""
+echo "=================================="
+echo "✅ 部署完成！"
+echo "=================================="
+EOFSCRIPT
+
+          chmod +x deploy/deploy.sh
+          
+          echo "✅ 部署文件准备完成"
+          echo "📂 部署文件列表:"
+          find deploy -type f -ls
+      
+      # ========================================
+      # 步骤 8: 配置 SSH
+      # ========================================
+      - name: 🔑 配置 SSH
+        run: |
+          echo "🔑 配置 SSH..."
+          mkdir -p ~/.ssh
+          echo "${{ env.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ env.SERVER_PORT }} ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts
+          echo "✅ SSH 配置完成"
+      
+      # ========================================
+      # 步骤 9: 上传部署文件到服务器
+      # ========================================
+      - name: 📤 上传部署文件到服务器
+        run: |
+          echo "📤 上传部署文件到服务器..."
+          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.DEPLOY_PATH }}"
+          
+          # 上传部署文件
+          scp -P ${{ env.SERVER_PORT }} -r deploy/* ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_PATH }}/
+          
+          echo "✅ 部署文件上传完成"
+      
+      # ========================================
+      # 步骤 10: 执行远程部署
+      # ========================================
+      - name: 🚀 执行远程部署
+        run: |
+          echo "=================================="
+          echo "🚀 开始部署到服务器"
+          echo "=================================="
+          
+          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << 'ENDSSH'
+            set -e
+            
+            # 进入部署目录
+            cd ${{ env.DEPLOY_PATH }}
+            
+            # 检查 Node.js 环境
+            if ! command -v node &> /dev/null; then
+              echo "❌ Node.js 未安装"
+              exit 1
+            fi
+            
+            echo "📦 Node.js 版本: $(node --version)"
+            echo "📦 pnpm 版本: $(pnpm --version)"
+            echo "📦 PM2 版本: $(pm2 --version)"
+            
+            # 检查 PM2
+            if ! command -v pm2 &> /dev/null; then
+              echo "❌ PM2 未安装，请先安装: npm install -g pm2"
+              exit 1
+            fi
+            
+            # 执行部署脚本
+            bash deploy.sh
+          ENDSSH
+      
+      # ========================================
+      # 步骤 11: 健康检查
+      # ========================================
+      - name: 🏥 健康检查
+        run: |
+          echo "🏥 执行健康检查..."
+          sleep 5
+          
+          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << 'ENDSSH'
+            echo "📊 PM2 状态:"
+            pm2 status demo-ad-integration
+            
+            echo ""
+            echo "🌐 检查端口 3000:"
+            if netstat -tln | grep -q ":3000"; then
+              echo "✅ 端口 3000 已监听"
+            else
+              echo "❌ 端口 3000 未监听"
+              exit 1
+            fi
+          ENDSSH
+      
+      # ========================================
+      # 步骤 12: 部署通知
+      # ========================================
+      - name: 📢 部署成功通知
+        if: success()
+        run: |
+          echo "=================================="
+          echo "✅ 部署成功！"
+          echo "=================================="
+          echo "📦 应用: ${{ env.APP_NAME }}"
+          echo "🔢 版本: ${{ env.APP_VERSION }}"
+          echo "🏷️  标签: ${{ github.sha }}"
+          echo "🌿 分支: ${{ github.ref_name }}"
+          echo "🔢 构建号: #${{ github.run_number }}"
+          echo "👤 部署人: ${{ github.actor }}"
+          echo "🌐 地址: http://${{ env.SERVER_HOST }}:3000"
+          echo "⏰ 时间: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "=================================="
+      
+      - name: 📢 部署失败通知
+        if: failure()
+        run: |
+          echo "=================================="
+          echo "❌ 部署失败！"
+          echo "=================================="
+          echo "📦 应用: ${{ env.APP_NAME }}"
+          echo "🌿 分支: ${{ github.ref_name }}"
+          echo "👤 操作人: ${{ github.actor }}"
+          echo "⏰ 时间: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "=================================="
+          echo "请检查上述步骤的错误信息"
+

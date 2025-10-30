@@ -51,4 +51,8 @@ key/*_private_key.txt
 
 # pnpm store
 .pnpm-store/**
+.pnpm-debug.log*
+
+# Deploy scripts (temporary)
+deploy
 
