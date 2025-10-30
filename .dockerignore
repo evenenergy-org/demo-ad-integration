@@ -23,12 +23,8 @@ logs
 .git
 .gitignore
 
-# Env files (will be provided via docker-compose)
-.env
-.env.*
-
-# Private keys
-key/
+# 注意：Demo 项目为了方便测试，将 .env 和 key 目录打包进镜像
+# 生产环境请务必排除这些敏感文件
 
 # GitHub
 .github/
