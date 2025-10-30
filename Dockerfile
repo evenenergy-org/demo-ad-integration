@@ -31,9 +31,9 @@ ENV PORT=3000
 # 复制构建产物
 COPY --from=builder /app/.output /app/.output
 
-# 复制私钥文件和生产配置
-COPY --from=builder /app/key /app/key
+# 复制生产配置和私钥文件
 COPY --from=builder /app/env.production /app/.env
+COPY --from=builder /app/key /app/key
 
 # 暴露端口
 EXPOSE 3000

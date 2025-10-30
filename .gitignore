@@ -47,8 +47,8 @@ local
 dist
 build
 
-# Private keys
-key/*_private_key.txt
+# Private keys (Demo 项目允许提交私钥用于测试)
+# key/*_private_key.txt
 
 # pnpm store
 .pnpm-store/**
