@@ -22,7 +22,7 @@ env:
   SERVER_PORT: ${{ secrets.TEST_SERVER_PORT }}
   SERVER_USER: ${{ secrets.TEST_SERVER_USER }}
   SERVER_SSH_KEY: ${{ secrets.TEST_SERVER_SSH_KEY }}
-  DEPLOY_PATH: /opt/demo-ad-integration
+  DEPLOY_PATH: /home/${{ secrets.TEST_SERVER_USER }}/demo-ad-integration
 
 jobs:
   build-and-deploy:
@@ -159,7 +159,7 @@ jobs:
           echo "🚀 开始部署到服务器"
           echo "=================================="
           
-          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << 'ENDSSH'
+          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << ENDSSH
             set -e
             
             # 进入部署目录
@@ -182,7 +182,7 @@ jobs:
             fi
             
             # 执行部署脚本
-            bash deploy.sh
+            bash deploy.sh ${{ env.DEPLOY_PATH }}
           ENDSSH
       
       # ========================================
@@ -193,7 +193,8 @@ jobs:
           echo "🏥 执行健康检查..."
           sleep 5
           
-          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << 'ENDSSH'
+          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << ENDSSH
+            cd ${{ env.DEPLOY_PATH }}
             echo "📊 PM2 状态:"
             pm2 status demo-ad-integration
             

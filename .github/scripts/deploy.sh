@@ -1,11 +1,13 @@
 #!/bin/bash
 set -e
 
+DEPLOY_PATH=$1
+
 echo "=================================="
 echo "🚀 开始部署"
 echo "=================================="
 
-cd /opt/demo-ad-integration
+cd "$DEPLOY_PATH"
 
 # 停止旧进程
 echo "⏹️  停止旧进程..."
@@ -28,12 +30,12 @@ cp -r .output/* current/
 
 # 创建 PM2 配置文件
 echo "📝 创建 PM2 配置..."
-cat > ecosystem.config.js << 'PM2_EOF'
+cat > ecosystem.config.js << PM2_EOF
 module.exports = {
   apps: [{
     name: 'demo-ad-integration',
     script: 'current/server/index.mjs',
-    cwd: '/opt/demo-ad-integration',
+    cwd: '$DEPLOY_PATH',
     instances: 2,
     exec_mode: 'cluster',
     env: {
@@ -42,9 +44,9 @@ module.exports = {
       NITRO_PORT: 3000,
       HOST: '0.0.0.0'
     },
-    error_file: '/opt/demo-ad-integration/logs/err.log',
-    out_file: '/opt/demo-ad-integration/logs/out.log',
-    log_file: '/opt/demo-ad-integration/logs/combined.log',
+    error_file: '$DEPLOY_PATH/logs/err.log',
+    out_file: '$DEPLOY_PATH/logs/out.log',
+    log_file: '$DEPLOY_PATH/logs/combined.log',
     time: true,
     merge_logs: true,
     autorestart: true,
