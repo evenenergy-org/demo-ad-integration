@@ -1,0 +1,54 @@
+# Nuxt dev/build outputs
+.output
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Env files
+.env
+.env.*
+!.env.example
+!env.example
+
+# Local
+local
+*.local
+
+# Build
+dist
+build
+
+# Private keys
+key/*_private_key.txt
+
+# pnpm store
+.pnpm-store
+
