@@ -153,7 +153,12 @@ jobs:
         run: |
           echo "📤 上传部署文件到服务器..."
           ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.DEPLOY_PATH }}"
-          scp -P ${{ env.SERVER_PORT }} -r deploy/* ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_PATH }}/
+          
+          echo "📂 上传文件列表："
+          ls -lh deploy/
+          
+          scp -P ${{ env.SERVER_PORT }} deploy/.env deploy/docker-compose.yml deploy/${{ env.APP_NAME }}.tar.gz ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.DEPLOY_PATH }}/
+          
           echo "✅ 部署文件上传完成"
       
       # ========================================
