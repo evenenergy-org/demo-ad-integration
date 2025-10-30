@@ -15,7 +15,10 @@ RUN pnpm install --frozen-lockfile
 # 复制源代码
 COPY . .
 
-# 构建应用
+# 复制生产环境配置作为 .env（构建时需要）
+COPY env.production .env
+
+# 构建应用（会读取 .env 中的环境变量）
 RUN pnpm run build
 
 # 生产阶段
