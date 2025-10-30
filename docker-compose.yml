@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   demo-ad-integration:
-    image: ${DOCKER_REGISTRY}/${APP_NAME}:${IMAGE_TAG:-latest}
+    image: ${APP_NAME}:${IMAGE_TAG}
     container_name: demo-ad-integration
     restart: unless-stopped
     ports:
