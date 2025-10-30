@@ -117,39 +117,26 @@ jobs:
           cp package.json deploy/
           
           # 创建部署脚本
-          cat > deploy/deploy.sh << 'EOFSCRIPT'
+          cat > deploy/deploy.sh << 'DEPLOY_EOF'
 #!/bin/bash
 set -e
-
 echo "=================================="
 echo "🚀 开始部署"
 echo "=================================="
-
 cd /opt/demo-ad-integration
-
-# 停止旧进程
 echo "⏹️  停止旧进程..."
 pm2 stop demo-ad-integration || true
 pm2 delete demo-ad-integration || true
-
-# 备份旧版本
 if [ -d "current" ]; then
   echo "📦 备份旧版本..."
-  mv current backup/backup-$(date +%Y%m%d-%H%M%S)
   mkdir -p backup
+  mv current backup/backup-$(date +%Y%m%d-%H%M%S)
 fi
-
-# 创建部署目录
-mkdir -p current
-mkdir -p logs
-mkdir -p backup
-
-# 复制新版本
+mkdir -p current logs backup
 echo "📂 复制新版本..."
 cp -r .output/* current/
-
-# 创建 PM2 配置文件
-cat > ecosystem.config.js << 'EOFPM2'
+echo "📝 创建 PM2 配置..."
+cat > ecosystem.config.js << 'PM2_EOF'
 module.exports = {
   apps: [{
     name: 'demo-ad-integration',
@@ -174,29 +161,21 @@ module.exports = {
     watch: false
   }]
 }
-EOFPM2
-
-# 启动应用
+PM2_EOF
 echo "🚀 启动应用..."
 pm2 start ecosystem.config.js
-
-# 保存 PM2 配置
 pm2 save
-
-# 显示状态
 echo ""
 echo "📊 应用状态："
 pm2 status
-
 echo ""
 echo "📝 最近日志："
 pm2 logs demo-ad-integration --lines 50 --nostream
-
 echo ""
 echo "=================================="
 echo "✅ 部署完成！"
 echo "=================================="
-EOFSCRIPT
+DEPLOY_EOF
 
           chmod +x deploy/deploy.sh
           

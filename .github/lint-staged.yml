@@ -1,6 +1,0 @@
-# 忽略 GitHub Actions 工作流的 YAML lint 检查
-# 因为文件中包含 heredoc 内容，会导致 YAML linter 误报
-
-paths-ignore:
-  - '.github/workflows/**'
-
