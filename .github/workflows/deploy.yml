@@ -159,7 +159,7 @@ jobs:
           echo "🚀 开始部署到服务器"
           echo "=================================="
           
-          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << ENDSSH
+          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "bash -l" << ENDSSH
             set -e
             
             # 进入部署目录
@@ -168,18 +168,20 @@ jobs:
             # 检查 Node.js 环境
             if ! command -v node &> /dev/null; then
               echo "❌ Node.js 未安装"
+              echo "提示：请在服务器上安装 Node.js 20+ 和 PM2"
               exit 1
             fi
             
-            echo "📦 Node.js 版本: $(node --version)"
-            echo "📦 pnpm 版本: $(pnpm --version)"
-            echo "📦 PM2 版本: $(pm2 --version)"
+            echo "📦 Node.js 版本: \$(node --version)"
+            echo "📦 npm 版本: \$(npm --version)"
             
             # 检查 PM2
             if ! command -v pm2 &> /dev/null; then
-              echo "❌ PM2 未安装，请先安装: npm install -g pm2"
-              exit 1
+              echo "❌ PM2 未安装，正在安装..."
+              npm install -g pm2
             fi
+            
+            echo "📦 PM2 版本: \$(pm2 --version)"
             
             # 执行部署脚本
             bash deploy.sh ${{ env.DEPLOY_PATH }}
@@ -193,14 +195,14 @@ jobs:
           echo "🏥 执行健康检查..."
           sleep 5
           
-          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} << ENDSSH
+          ssh -p ${{ env.SERVER_PORT }} ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "bash -l" << ENDSSH
             cd ${{ env.DEPLOY_PATH }}
             echo "📊 PM2 状态:"
             pm2 status demo-ad-integration
             
             echo ""
             echo "🌐 检查端口 3000:"
-            if netstat -tln | grep -q ":3000"; then
+            if ss -tln | grep -q ":3000" || netstat -tln 2>/dev/null | grep -q ":3000"; then
               echo "✅ 端口 3000 已监听"
             else
               echo "❌ 端口 3000 未监听"
