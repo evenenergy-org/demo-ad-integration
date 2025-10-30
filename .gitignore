@@ -50,5 +50,5 @@ build
 key/*_private_key.txt
 
 # pnpm store
-.pnpm-store
+.pnpm-store/**
 
