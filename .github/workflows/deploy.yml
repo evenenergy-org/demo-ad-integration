@@ -182,6 +182,15 @@ jobs:
             docker load < ${{ env.APP_NAME }}.tar.gz
             
             echo ""
+            echo "⏹️  停止占用端口 3000 的容器..."
+            CONTAINER_ID=$(docker ps -q --filter "publish=3000")
+            if [ ! -z "$CONTAINER_ID" ]; then
+              echo "发现占用端口 3000 的容器: $CONTAINER_ID"
+              docker stop $CONTAINER_ID
+              docker rm $CONTAINER_ID
+            fi
+            
+            echo ""
             echo "⏹️  停止旧容器..."
             docker compose down --remove-orphans || true
             
