@@ -1,0 +1,43 @@
+# Nuxt dev/build outputs
+.output
+.nuxt
+.nitro
+.cache
+
+# Node dependencies
+node_modules
+.pnpm-store
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.idea
+.vscode
+
+# Git
+.git
+.gitignore
+
+# Env files (will be provided via docker-compose)
+.env
+.env.*
+
+# Private keys
+key/
+
+# GitHub
+.github/
+
+# Documentation
+README.md
+LICENSE
+
+# Deploy scripts
+deploy
+*.sh
+
