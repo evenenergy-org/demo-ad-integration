@@ -32,9 +32,10 @@ lerna-debug.log*
 *.swo
 *~
 
-# Env files
-.env
+# Env files (Demo 项目允许提交环境配置用于测试)
+# .env
 .env.*
+!.env
 !.env.example
 !env.example
 !env.production
