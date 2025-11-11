@@ -207,6 +207,28 @@ const addLog = (message: string, type: string = 'info') => {
   if (logs.value.length > 50) logs.value.pop()
 }
 
+const extractErrorReason = (payload: any, fallback: string) => {
+  if (!payload || typeof payload !== 'object') return fallback
+  const candidates = [
+    payload.message,
+    payload.msg,
+    payload.detail,
+    payload.data?.message,
+    payload.data?.msg,
+    payload.data?.detail,
+    payload.data?.error,
+    typeof payload.data === 'string' ? payload.data : null
+  ]
+    .map(item => (item == null ? null : String(item)))
+    .filter(Boolean)
+
+  if (candidates.length === 0) return fallback
+
+  const [primary, ...rest] = Array.from(new Set(candidates))
+  const extra = rest.length ? `（${rest.join(' / ')}）` : ''
+  return `${primary}${extra}`
+}
+
 // 请求广告
 const handleRequestAd = async () => {
   try {
@@ -229,10 +251,14 @@ const handleRequestAd = async () => {
       clickReported.value = false
       addLog('✅ 广告请求成功！广告ID: ' + result.data.adId, 'success')
     } else {
-      addLog('❌ 广告请求失败: ' + (result.message || '未知错误'), 'error')
+      const reason = extractErrorReason(result, '未返回失败原因')
+      const codeLabel = result?.code ? ` [${result.code}]` : ''
+      addLog(`❌ 广告请求失败${codeLabel}: ${reason}`, 'error')
     }
   } catch (error: any) {
-    addLog('❌ 广告请求异常: ' + (error.message || error), 'error')
+    const reason = extractErrorReason(error, error?.message || '未知错误')
+    const codeLabel = error?.code && error.code !== 'UNKNOWN' ? ` [${error.code}]` : ''
+    addLog(`❌ 广告请求异常${codeLabel}: ${reason}`, 'error')
   } finally {
     loading.value = false
   }
@@ -258,10 +284,14 @@ const handleReportImpression = async () => {
         addLog('💰 CPM计费已触发扣费', 'success')
       }
     } else {
-      addLog('❌ 曝光上报失败: ' + (result.message || '未知错误'), 'error')
+      const reason = extractErrorReason(result, '未返回失败原因')
+      const codeLabel = result?.code ? ` [${result.code}]` : ''
+      addLog(`❌ 曝光上报失败${codeLabel}: ${reason}`, 'error')
     }
   } catch (error: any) {
-    addLog('❌ 曝光上报异常: ' + (error.message || error), 'error')
+    const reason = extractErrorReason(error, error?.message || '未知错误')
+    const codeLabel = error?.code && error.code !== 'UNKNOWN' ? ` [${error.code}]` : ''
+    addLog(`❌ 曝光上报异常${codeLabel}: ${reason}`, 'error')
   }
 }
 
@@ -287,10 +317,14 @@ const handleReportClick = async () => {
       // 模拟跳转
       addLog('🔗 跳转到广告主落地页: ' + adData.value.jumpPage, 'info')
     } else {
-      addLog('❌ 点击上报失败: ' + (result.message || '未知错误'), 'error')
+      const reason = extractErrorReason(result, '未返回失败原因')
+      const codeLabel = result?.code ? ` [${result.code}]` : ''
+      addLog(`❌ 点击上报失败${codeLabel}: ${reason}`, 'error')
     }
   } catch (error: any) {
-    addLog('❌ 点击上报异常: ' + (error.message || error), 'error')
+    const reason = extractErrorReason(error, error?.message || '未知错误')
+    const codeLabel = error?.code && error.code !== 'UNKNOWN' ? ` [${error.code}]` : ''
+    addLog(`❌ 点击上报异常${codeLabel}: ${reason}`, 'error')
   }
 }
 

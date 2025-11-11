@@ -5,6 +5,29 @@ export const useAdApi = () => {
   const config = useRuntimeConfig()
   const { generateRsaSignature } = useSignature()
 
+  const normalizeResponse = (response: any) => {
+    if (!response || typeof response !== 'object') return response
+    const message =
+      response.message ??
+      response.msg ??
+      response?.data?.message ??
+      response?.data?.msg ??
+      response?.error ??
+      null
+    const detail =
+      response.detail ??
+      response?.data?.detail ??
+      response?.data?.error ??
+      response?.data?.reason ??
+      null
+
+    return {
+      ...response,
+      message,
+      detail
+    }
+  }
+
   /**
    * 统一的API请求处理
    */
@@ -23,20 +46,40 @@ export const useAdApi = () => {
         body: data
       })
 
-      console.log(`[API响应] 成功:`, response)
-      return response
+      const normalized = normalizeResponse(response)
+      console.log(`[API响应] 成功:`, normalized)
+      return normalized
     } catch (error: any) {
       console.error(`[API错误] 请求失败:`, error)
       
       // 提取错误信息
-      const errorMessage = error.data?.message || error.message || '未知错误'
+      const errorMessage =
+        error.data?.message ||
+        error.data?.msg ||
+        error.message ||
+        '未知错误'
+      const errorDetail =
+        error.data?.detail ||
+        error.data?.error ||
+        error.data?.reason ||
+        error.data?.data?.detail ||
+        null
       const errorCode = error.data?.code || error.statusCode || 'UNKNOWN'
+      const combinedMessage =
+        errorDetail && !errorMessage.includes(errorDetail)
+          ? `${errorMessage}（${errorDetail}）`
+          : errorMessage
       
-      console.error(`[API错误] 错误码: ${errorCode}, 错误信息: ${errorMessage}`)
+      console.error(
+        `[API错误] 错误码: ${errorCode}, 错误信息: ${combinedMessage}${
+          errorDetail ? `，详情: ${errorDetail}` : ''
+        }`
+      )
       
       throw {
         code: errorCode,
-        message: errorMessage,
+        message: combinedMessage,
+        detail: errorDetail,
         originalError: error
       }
     }
